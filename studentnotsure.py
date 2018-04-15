@@ -9,7 +9,7 @@ import thread
 from tkMessageBox import *
 
 root = Tk()
-root.title("Edit Interface")
+root.title("Exam Interface")
 root.configure(bg = "#D3D3D3")
 
 
@@ -27,15 +27,15 @@ answers=0
 counter=0
 
 answer={}
-questions=[]
+questions=[] #lists of questions and following are lists of first options, second options so on
 opt1=[]
 opt2=[]
 opt3=[]
 opt4=[]
 qId=[]
-
+optVal=IntVar()
 NoOfQuestions=0
-
+timeMin=60 # variable for taking minutes from database
 TimerMinutes=59
 TimerSeconds=60
 
@@ -61,11 +61,13 @@ def submitouterframe():
 			global qId
 			global answer
 			global NoOfQuestions
-			
+			global timeMin
 			try:
 				db=MySQLdb.connect(ipAddress,"root","root","pythondb2",3306)
 				cursor=db.cursor()
-				FetchPaperSQL="SELECT * FROM `"+qPaperName+"` ORDER BY RAND()"
+
+				FetchPaperSQL="SELECT * FROM `"+qPaperName+"` WHERE 1 ORDER BY RAND()"
+				print FetchPaperSQL
 				cursor.execute(FetchPaperSQL)
 				quesPaper=cursor.fetchall()
 				NoOfQuestions=cursor.rowcount
@@ -79,8 +81,18 @@ def submitouterframe():
 					opt2.append(q[3])
 					opt3.append(q[4])
 					opt4.append(q[5])
+				try:
+					FetchTimerSQL="SELECT timeMin FROM `qPaperList` WHERE papername='"+qPaperName+"'"
+					print FetchTimerSQL
+					cursor.execute(FetchTimerSQL)
+					res=cursor.fetchone()
+					timeMin=int(res[0])
+				except Exception, e:
+					raise e
+					showerror("Error !","Please try Again later or Inform the administrator")
+					return 0
 			except Exception, e:
-				#raise e
+				raise e
 				showerror("Invalid Entries","Please Check Your Entries")
 				return 0
 			return 1
@@ -88,11 +100,13 @@ def submitouterframe():
 
 		if(fetchPaper()==1):
 			outerFrame.place_forget()
-			optVal=IntVar()
+			global optVal
 			optVal.set(-1)
 			
 			def next():
 				global counter
+				print qId[counter]
+				print optVal.get()
 				answer[qId[counter]]=optVal.get()
 				counter+=1
 				optVal.set(-1)
@@ -188,10 +202,10 @@ def submitouterframe():
 			def Timer():
 				global TimerMinutes
 				global TimerSeconds
-				TimerMinutes=59
+				TimerMinutes=timeMin-1
 				TimerSeconds=60
 				#print ThreadName
-				while(TimerMinutes>=0 or TimerSeconds>=0):
+				while(TimerMinutes>0 or TimerSeconds>0):
 					TimerSeconds-=1
 					if(TimerSeconds==-1):
 						TimerMinutes-=1
@@ -205,6 +219,10 @@ def submitouterframe():
 				#delete everything code
 				submit()
 
+			def forceClose():
+				#submit()
+				root.destroy()
+				
 
 			def submit():
 				answer[qId[counter]]=optVal.get()
@@ -246,7 +264,7 @@ def submitouterframe():
 
 				db.close()
 
-
+			
 			ubuntuLarge=Font(family="Ubuntu", size=40)
 			ubuntuNormal=Font(family="Ubuntu",size=15)
 			ubuntuAnswer=Font(family="Ubuntu",size=13)
@@ -306,7 +324,7 @@ def submitouterframe():
 			NextButton.config(width="5",height="5")
 			NextButton.place(relx=0.5 , rely=0.09 , width=200,height=100)
 
-			BackButton = Button(labelframe2 , text = "Back" , command = back , font=ubuntuLarge)
+			BackButton = Button(labelframe2 , text = "Back" , command = back , font=ubuntuLarge, state=DISABLED)
 			BackButton.place(relx=0.5 , rely=0.09 , width=200,height=100 , anchor=NE)
 
 			labelframe5=LabelFrame(root,bg="LightGrey",text="Click Submit after you have answered all questions", font=ubuntuSmall)
@@ -325,6 +343,7 @@ def submitouterframe():
 			# 	labelframe1.update()
 
 			thread.start_new_thread( Timer,() )
+			root.protocol("WM_DELETE_WINDOW",forceClose)
 		else:
 			pass
 
@@ -361,7 +380,7 @@ outerframeSubmitButton.place(relx=0.41,rely=0.35)
 
 
 
-	
+#root.protocol("WM_DELETE_WINDOW",submit)
 root.mainloop()
 
 
